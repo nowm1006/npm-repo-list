@@ -1,41 +1,42 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import https from 'node:https';
-const filename = process.argv[2];
-const basename = path.basename(filename, '.json');
-const outputname = basename + '-urls.txt';
-const content = fs.readFileSync(filename, { encoding: 'utf-8' });
+const pathname = process.argv[2];
+const basedir = path.dirname(pathname);
+const basename = path.basename(pathname, '.json');
+const basenameWithSlash = basename.replace('%', '/');
+const content = fs.readFileSync(pathname, { encoding: 'utf-8' });
 const plj = JSON.parse(content);
-const fd = fs.openSync(outputname, 'w');
-fs.mkdirSync(basename, { recursive: true });
+// download tar balls
 Object.keys(plj.packages).forEach(packageName => {
     if (plj.packages[packageName].resolved) {
-        fs.writeFileSync(fd, plj.packages[packageName].resolved + '\n');
         const url = plj.packages[packageName].resolved;
-        const fn = path.basename(url);
-        const outfile = fs.createWriteStream(basename + '/' + fn);
-        https.get(url, res => {
-            res.pipe(outfile);
-            res.on('end', () => {
-                outfile.close();
-            });
-        });
+        downloadByUrl(url, basename);
     }
 });
-fs.closeSync(fd);
-const dependencies = plj.dependencies;
-const basenameWithSlash = basename.replace('%', '/');
-const resolveTree = resolveDeps(basenameWithSlash, {});
-fs.writeFileSync(basename + '-resolved.txt', JSON.stringify(resolveTree, null, 2));
-function resolveDeps(parent, tree) {
+// resolve dependencies
+const resolveTree = resolveDeps(plj.dependencies, basenameWithSlash, {});
+fs.writeFileSync(basedir + '/' + basename + '-resolved.txt', JSON.stringify(resolveTree, null, 2));
+function resolveDeps(data, parent, tree) {
     var _a;
-    const key = dependencies[parent].resolved;
+    const key = data[parent].resolved;
     const value = {};
-    if ((_a = dependencies[parent]) === null || _a === void 0 ? void 0 : _a.requires) {
-        Object.keys(dependencies[parent].requires).forEach((dep) => {
-            resolveDeps(dep, value);
+    if ((_a = data[parent]) === null || _a === void 0 ? void 0 : _a.requires) {
+        Object.keys(data[parent].requires).forEach((dep) => {
+            resolveDeps(data, dep, value);
         });
     }
     tree[key] = value;
     return tree;
+}
+function downloadByUrl(url, saveDir) {
+    const filename = path.basename(url);
+    fs.mkdirSync(saveDir, { recursive: true });
+    const outfile = fs.createWriteStream(saveDir + '/' + filename);
+    https.get(url, res => {
+        res.pipe(outfile);
+        res.on('end', () => {
+            outfile.close();
+        });
+    });
 }
