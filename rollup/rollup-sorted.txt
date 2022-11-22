@@ -1,10 +1,4 @@
-[
-  {
-    "level": 2,
-    "url": "https://registry.npmjs.org/fsevents/-/fsevents-2.3.2.tgz"
-  },
-  {
-    "level": 1,
-    "url": "https://registry.npmjs.org/rollup/-/rollup-3.3.0.tgz"
-  }
-]
+{
+  "fsevents": "file:../../npm_packages/fsevents-2.3.2.tgz",
+  "rollup": "file:../../npm_packages/rollup-3.3.0.tgz"
+}

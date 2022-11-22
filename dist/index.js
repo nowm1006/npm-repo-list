@@ -18,10 +18,10 @@ Object.keys(plj.packages).forEach(packageName => {
 const resolveTree = resolveDeps(plj.dependencies, basenameWithSlash, {});
 fs.writeFileSync(basedir + '/' + basename + '-resolved.txt', JSON.stringify(resolveTree, null, 2));
 // sort dependencies
-const sortedTree = sortDeps(plj.dependencies, basenameWithSlash, []);
-sortedTree.sort((a, b) => b.level - a.level);
+const leveledTree = levelDeps(plj.dependencies, basenameWithSlash, []);
+leveledTree.sort((a, b) => b.level - a.level);
 const myWritableStream = fs.createWriteStream(path.join(basedir, basename + '-sorted.txt'));
-myWritableStream.write(JSON.stringify(sortedTree, null, 2));
+myWritableStream.write(makeDepsTree(leveledTree, '../../npm_packages/'));
 function resolveDeps(data, parent, tree) {
     var _a;
     const key = data[parent].resolved;
@@ -34,14 +34,21 @@ function resolveDeps(data, parent, tree) {
     tree[key] = value;
     return tree;
 }
-function sortDeps(data, parent, list, level = 1) {
+function makeDepsTree(leveledTree, basedir) {
+    const dependencies = {};
+    leveledTree.forEach(item => {
+        dependencies[item.name] = 'file:' + basedir + item.url;
+    });
+    return JSON.stringify(dependencies, null, 2);
+}
+function levelDeps(data, parent, list, level = 1) {
     var _a;
-    const url = data[parent].resolved;
-    const item = { level, url };
+    const url = path.basename(data[parent].resolved);
+    const item = { level, name: parent, url };
     list.push(item);
     if ((_a = data[parent]) === null || _a === void 0 ? void 0 : _a.requires) {
         Object.keys(data[parent].requires).forEach((dep) => {
-            sortDeps(data, dep, list, level + 1);
+            levelDeps(data, dep, list, level + 1);
         });
     }
     return list;

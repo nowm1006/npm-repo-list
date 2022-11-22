@@ -23,10 +23,10 @@ const resolveTree:Record<string,any> = resolveDeps(plj.dependencies,basenameWith
 fs.writeFileSync(basedir + '/' + basename + '-resolved.txt',JSON.stringify(resolveTree,null,2))
 
 // sort dependencies
-const sortedTree:Record<string,any>[] = sortDeps(plj.dependencies,basenameWithSlash,[])
-sortedTree.sort((a,b) =>  b.level - a.level)
+const leveledTree:Record<string,any>[] = levelDeps(plj.dependencies,basenameWithSlash,[])
+leveledTree.sort((a,b) =>  b.level - a.level)
 const myWritableStream = fs.createWriteStream(path.join(basedir,basename+'-sorted.txt'))
-myWritableStream.write(JSON.stringify(sortedTree,null,2))
+myWritableStream.write(makeDepsTree(leveledTree,'../../npm_packages/'))
 
 function resolveDeps(data:Record<string,any> ,parent:string, tree:Record<string,any>):Record<string,any> {
     const key = data[parent].resolved
@@ -41,17 +41,27 @@ function resolveDeps(data:Record<string,any> ,parent:string, tree:Record<string,
     return tree
 }
 
-function sortDeps(data:Record<string,any>, parent:string, list:Record<string,any>[], level:number=1):Record<string,any>[] {
-    const url = data[parent].resolved
-    const item = {level,url}
+function makeDepsTree(leveledTree:Record<string,any>[],basedir:string):string {
+    const dependencies:Record<string,any> = {}
+
+    leveledTree.forEach(item => {
+        dependencies[item.name] = 'file:' + basedir + item.url
+    })
+    return JSON.stringify(dependencies,null,2)
+}
+
+function levelDeps(data:Record<string,any>, parent:string, list:Record<string,any>[], level:number=1):Record<string,any>[] {
+    const url = path.basename(data[parent].resolved)
+    const item = {level, name:parent, url}
     list.push(item)
     if (data[parent]?.requires) {
         Object.keys(data[parent].requires).forEach((dep:string)=>{
-            sortDeps(data,dep,list,level+1)
+            levelDeps(data,dep,list,level+1)
         })
     }
     return list
 }
+
 
 function downloadByUrl(url:string, saveDir:string):void {
     const filename = path.basename(url)
